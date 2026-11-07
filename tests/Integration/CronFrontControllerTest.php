@@ -57,6 +57,8 @@ final class CronFrontControllerTest extends TestCase
     #[\PHPUnit\Framework\Attributes\DataProvider('refusedRequests')]
     public function testAWrongTokenGets403AndRunsNothing(array $query): void
     {
+        // The cron request ran in another process: read the counter from the database, not this process's cache.
+        \Configuration::loadConfiguration();
         $before = (int) \Configuration::getGlobalValue('HEAVENMONOINTEGRATION_RUNS');
 
         $response = $this->call($query);
@@ -76,7 +78,11 @@ final class CronFrontControllerTest extends TestCase
         self::assertStringNotContainsString('secret details', $response['body']);
     }
 
-    public function testAShopWhereTheModuleIsOffGets503(): void
+    /**
+     * PrestaShop's dispatcher already answers 404 for the front controller of a module that is switched off in the shop
+     * (8.1 and 9.x); the controller's own 503 check covers the rest. Either way the job does not run.
+     */
+    public function testAShopWhereTheModuleIsOffRunsNothing(): void
     {
         if (!\Shop::isFeatureActive() || count(\Shop::getShops(true, null, true)) < 2) {
             self::markTestSkipped('Needs a second shop: the multistore round of ps-module shops run covers it.');
@@ -87,10 +93,17 @@ final class CronFrontControllerTest extends TestCase
         \Shop::setContext(\Shop::CONTEXT_SHOP, $other);
         $module->disable();
         try {
+            \Configuration::loadConfiguration();
+            $before = (int) \Configuration::getGlobalValue('HEAVENMONOINTEGRATION_RUNS');
+
             $response = $this->call(['cron_token' => $this->token()], $other);
 
-            self::assertSame(503, $response['status'], $response['body']);
-            self::assertSame(['success' => false, 'message' => 'The module is switched off in this shop.'], json_decode($response['body'], true));
+            self::assertContains($response['status'], [404, 503], $response['body']);
+            if ($response['status'] === 503) {
+                self::assertSame(['success' => false, 'message' => 'The module is switched off in this shop.'], json_decode($response['body'], true));
+            }
+            \Configuration::loadConfiguration();
+            self::assertSame($before, (int) \Configuration::getGlobalValue('HEAVENMONOINTEGRATION_RUNS'), 'the job did not run');
         } finally {
             $module->enable();
             \Shop::setContext(\Shop::CONTEXT_SHOP, (int) \Configuration::get('PS_SHOP_DEFAULT'));
