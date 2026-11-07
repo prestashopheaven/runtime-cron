@@ -1,0 +1,49 @@
+{
+    "name": "prestashopheaven/runtime-cron",
+    "description": "The cron URL of a PrestaHaven module: a JSON front controller that checks the module's token (never an empty one), runs the job for the shop of the URL and never shows error details.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "George van Engers",
+            "email": "vanengers@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "prestashopheaven/runtime-cqrs": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "PrestaShopHeaven\\Runtime\\Cron\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "PrestaShopHeaven\\Runtime\\Cron\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "1.x-dev"
+        },
+        "prestashopheaven": {
+            "kind": "runtime",
+            "use-when": "A module offers a cron URL (index.php?fc=module&module=<name>&controller=cron&cron_token=…) per shop for a periodic job, or needs to compare a secret token safely.",
+            "keywords": [
+                "cron",
+                "cron-url",
+                "token",
+                "front-controller",
+                "scheduled-job",
+                "maintenance",
+                "json",
+                "hash_equals",
+                "multistore"
+            ],
+            "integration-tested": [
+                "src/CronFrontController.php"
+            ]
+        }
+    }
+}
